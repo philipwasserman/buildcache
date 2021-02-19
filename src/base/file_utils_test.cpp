@@ -202,3 +202,41 @@ TEST_CASE("get_unique_id produces expected results") {
     }
   }
 }
+
+TEST_CASE("Set and get current working directory") {
+  // Remember the current working directory.
+  const auto old_cwd = file::get_cwd();
+  try {
+    // Change to a new working directory.
+    const auto new_cwd = file::get_temp_dir();
+    file::set_cwd(new_cwd);
+
+    // Check that the current working dir is what we requested.
+    CHECK_EQ(new_cwd, file::get_cwd());
+
+    // Change back - we should now be in the old CWD.
+    file::set_cwd(old_cwd);
+    CHECK_EQ(old_cwd, file::get_cwd());
+  } catch (...) {
+    // ...just in case things go wrong.
+    file::set_cwd(old_cwd);
+    FAIL("Something went wrong");
+  }
+}
+
+TEST_CASE("Scoped working directory") {
+  // Remember the current working directory.
+  const auto old_cwd = file::get_cwd();
+
+  {
+    // Change to a new working dir using scoped_work_dir_t.
+    const auto new_cwd = file::get_temp_dir();
+    file::scoped_work_dir_t scoped_work_dir(new_cwd);
+
+    // Check that the current working dir is what we requested.
+    CHECK_EQ(new_cwd, file::get_cwd());
+  }
+
+  // We should now be in the old CWD.
+  CHECK_EQ(old_cwd, file::get_cwd());
+}
