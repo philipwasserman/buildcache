@@ -26,6 +26,13 @@ namespace bcache {
 /// @brief A program wrapper for GCC and GCC-like C/C++ compilers.
 class gcc_wrapper_t : public program_wrapper_t {
 public:
+  /// @brief Compatible mode.
+  enum class compatible_mode_t {
+    NOT_SPECIFIED = 0,  ///< Don't use any specific flags
+    GCC = 1,            ///< Can use GCC compatible flags
+    CLANG = 2,          ///< Can use Clang compatible flags
+  };
+
   gcc_wrapper_t(const file::exe_path_t& exe_path, const string_list_t& args);
 
   bool can_handle_command() override;
@@ -39,9 +46,11 @@ protected:
   string_list_t get_input_files() override;
   std::string preprocess_source() override;
   string_list_t get_implicit_input_files() override;
+  virtual bool uses_defines_in_preprocess() const;
 
   string_list_t m_resolved_args;
   string_list_t m_implicit_input_files;
+  compatible_mode_t m_compatible_mode;
 
 private:
   void resolve_args() override;
