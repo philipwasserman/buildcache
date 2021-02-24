@@ -75,6 +75,8 @@ std::string s_remote;
 std::string s_s3_access;
 std::string s_s3_secret;
 bool s_terminate_on_miss = false;
+std::string s_redis_username;
+std::string s_redis_password;
 
 std::string to_lower(const std::string& str) {
   std::string str_lower(str.size(), ' ');
@@ -331,6 +333,20 @@ void load_from_file(const std::string& file_name) {
     }
   }
 
+  {
+    const auto* node = cJSON_GetObjectItemCaseSensitive(root, "redis_username");
+    if ((cJSON_IsString(node) != 0) && node->valuestring != nullptr) {
+      s_redis_username = std::string(node->valuestring);
+    }
+  }
+
+  {
+    const auto* node = cJSON_GetObjectItemCaseSensitive(root, "redis_password");
+    if ((cJSON_IsString(node) != 0) && node->valuestring != nullptr) {
+      s_redis_password = std::string(node->valuestring);
+    }
+  }
+
   cJSON_Delete(root);
 }
 }  // namespace
@@ -575,6 +591,20 @@ void init() {
       }
     }
 
+    {
+      const env_var_t env("BUILDCACHE_REDIS_USERNAME");
+      if (env) {
+        s_redis_username = env.as_string();
+      }
+    }
+
+    {
+      const env_var_t env("BUILDCACHE_REDIS_PASSWORD");
+      if (env) {
+        s_redis_password = env.as_string();
+      }
+    }
+
     // We also look for Lua files in the cache root dir (i.e. ${BUILDCACHE_DIR}/lua).
     // Note: We give the default Lua path the lowest priority.
     s_lua_paths += file::append_path(s_dir, "lua");
@@ -691,6 +721,14 @@ const std::string& s3_secret() {
 
 bool terminate_on_miss() {
   return s_terminate_on_miss;
+}
+
+const std::string& redis_username() {
+  return s_redis_username;
+}
+
+const std::string& redis_password() {
+  return s_redis_password;
 }
 
 }  // namespace config

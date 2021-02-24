@@ -86,7 +86,9 @@ To do so, set `BUILDCACHE_REMOTE` to a valid remote server address (see below).
 [Redis](https://redis.io/) is a fast, in-memory data store with built in
 [LRU](https://en.wikipedia.org/wiki/Cache_replacement_policies#Least_recently_used_(LRU))
 eviction policies. It is suitable for build systems that produce many small
-object files, such as is typical for C/C++ compilation.
+object files, such as is typical for C/C++ compilation. 
+[Authentication](https://redis.io/commands/auth) is supported using 
+`BUILDCACHE_REDIS_PASSWORD` with or without `BUILDCACHE_REDIS_USERNAME`
 
 Example:
 ```bash

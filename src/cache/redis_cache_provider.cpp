@@ -107,6 +107,37 @@ bool redis_cache_provider_t::connect(const std::string& host_description) {
     return false;
   }
 
+  // Get the access keys.
+  if (!config::redis_password().empty()) {
+    std::string auth_string;
+    if (config::redis_username().empty()) {
+      auth_string = config::redis_password();
+    } else {
+      auth_string = config::redis_username() + " " + config::redis_password();
+    }
+    void* reply_ptr = redisCommand(m_ctx, "AUTH %s", auth_string.c_str());
+    if (reply_ptr != nullptr) {
+      // Interpret the result.
+      auto* reply = reinterpret_cast<redisReply*>(reply_ptr);
+      if (reply->type == REDIS_REPLY_ERROR) {
+        debug::log(debug::ERROR) << "Remote cache auth error: "
+                                 << std::string(reply->str, reply->len);
+        freeReplyObject(reply);
+        disconnect();
+        return false;
+      }
+      freeReplyObject(reply);
+    } else {
+      debug::log(debug::ERROR) << "Remote cache auth error: " << m_ctx->errstr;
+      disconnect();
+      return false;
+    }
+  } else if (!config::redis_username().empty()) {
+    debug::log(debug::ERROR) << "Missing Redis password (define BUILDCACHE_REDIS_PASSWORD)";
+    disconnect();
+    return false;
+  }
+
   return true;
 }
 
@@ -187,8 +218,8 @@ std::string redis_cache_provider_t::get_data(const std::string& key) {
 
     if (reply->type == REDIS_REPLY_STRING) {
       data = std::string(reply->str, reply->len);
-      debug::log(debug::log_level_t::DEBUG)
-          << "Downloaded " << data.size() << " bytes from the remote cache";
+      debug::log(debug::log_level_t::DEBUG) << "Downloaded " << data.size()
+                                            << " bytes from the remote cache";
       success = true;
     } else if (reply->type == REDIS_REPLY_ERROR) {
       data = std::string("Remote cache reply error: ") + std::string(reply->str, reply->len);
@@ -226,8 +257,8 @@ void redis_cache_provider_t::set_data(const std::string& key, const std::string&
     // Interpret the result.
     auto* reply = reinterpret_cast<redisReply*>(reply_ptr);
     if (reply->type == REDIS_REPLY_STATUS) {
-      debug::log(debug::log_level_t::DEBUG)
-          << "Uploaded " << data.size() << " bytes to the remote cache";
+      debug::log(debug::log_level_t::DEBUG) << "Uploaded " << data.size()
+                                            << " bytes to the remote cache";
       success = true;
     } else if (reply->type == REDIS_REPLY_ERROR) {
       err = std::string("Remote cache reply error: ") + std::string(reply->str, reply->len);

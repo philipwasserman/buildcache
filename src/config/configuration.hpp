@@ -138,6 +138,12 @@ const std::string& s3_secret();
 /// @returns true if a "terminate on a miss" mode is enabled.
 bool terminate_on_miss();
 
+/// @returns the Redis ACL User Name for the remote cache.
+const std::string& redis_username();
+
+/// @returns the Redis Token/Password for the remote cache.
+const std::string& redis_password();
+
 }  // namespace config
 }  // namespace bcache
 
