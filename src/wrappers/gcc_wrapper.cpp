@@ -85,60 +85,10 @@ bool has_coverage_output(const string_list_t& args) {
   }
   return false;
 }
-
-string_list_t make_preprocessor_cmd(const string_list_t& args,
-                                    const std::string& preprocessed_file,
-                                    gcc_wrapper_t::compatible_mode_t compatible_mode) {
-  string_list_t preprocess_args;
-
-  // Drop arguments that we do not want/need.
-  bool drop_next_arg = false;
-  for (auto it = args.begin(); it != args.end(); ++it) {
-    auto arg = *it;
-    auto drop_this_arg = drop_next_arg;
-    drop_next_arg = false;
-    if (arg == "-c") {
-      drop_this_arg = true;
-    } else if (arg == "-o") {
-      drop_this_arg = true;
-      drop_next_arg = true;
-    }
-    if (!drop_this_arg) {
-      preprocess_args += arg;
-    }
-  }
-
-  // Should we inhibit line info in the preprocessed output?
-  const bool debug_symbols_required =
-      has_debug_symbols(args) && (config::accuracy() >= config::cache_accuracy_t::STRICT);
-  const bool coverage_symbols_required =
-      has_coverage_output(args) && (config::accuracy() >= config::cache_accuracy_t::DEFAULT);
-  const bool inhibit_line_info = !(debug_symbols_required || coverage_symbols_required);
-
-  // Append the required arguments for producing preprocessed output.
-  preprocess_args += std::string("-E");
-  if (inhibit_line_info) {
-    preprocess_args += std::string("-P");
-  }
-  preprocess_args += std::string("-o");
-  preprocess_args += preprocessed_file;
-
-  // Add argument for listing include files (used for direct mode).
-  preprocess_args += std::string("-H");  // Supported by gcc, clang and ghc
-
-  // Add argument for only preprocessing certain directives
-  if (compatible_mode == gcc_wrapper_t::compatible_mode_t::CLANG) {
-    preprocess_args += std::string("-frewrite-includes");
-  } else if (compatible_mode == gcc_wrapper_t::compatible_mode_t::GCC) {
-    preprocess_args += std::string("-fdirectives-only");
-  }
-
-  return preprocess_args;
-}
 }  // namespace
 
 gcc_wrapper_t::gcc_wrapper_t(const file::exe_path_t& exe_path, const string_list_t& args)
-    : m_compatible_mode(compatible_mode_t::NOT_SPECIFIED), program_wrapper_t(exe_path, args) {
+    : program_wrapper_t(exe_path, args) {
 }
 
 void gcc_wrapper_t::resolve_args() {
@@ -299,6 +249,54 @@ bool gcc_wrapper_t::uses_defines_in_preprocess() const {
   }
 }
 
+string_list_t gcc_wrapper_t::make_preprocessor_cmd(const std::string& preprocessed_file) const {
+  string_list_t preprocess_args;
+
+  // Drop arguments that we do not want/need.
+  bool drop_next_arg = false;
+  for (auto it = m_args.begin(); it != m_args.end(); ++it) {
+    auto arg = *it;
+    auto drop_this_arg = drop_next_arg;
+    drop_next_arg = false;
+    if (arg == "-c") {
+      drop_this_arg = true;
+    } else if (arg == "-o") {
+      drop_this_arg = true;
+      drop_next_arg = true;
+    }
+    if (!drop_this_arg) {
+      preprocess_args += arg;
+    }
+  }
+
+  // Should we inhibit line info in the preprocessed output?
+  const bool debug_symbols_required =
+      has_debug_symbols(m_args) && (config::accuracy() >= config::cache_accuracy_t::STRICT);
+  const bool coverage_symbols_required =
+      has_coverage_output(m_args) && (config::accuracy() >= config::cache_accuracy_t::DEFAULT);
+  const bool inhibit_line_info = !(debug_symbols_required || coverage_symbols_required);
+
+  // Append the required arguments for producing preprocessed output.
+  preprocess_args += std::string("-E");
+  if (inhibit_line_info) {
+    preprocess_args += std::string("-P");
+  }
+  preprocess_args += std::string("-o");
+  preprocess_args += preprocessed_file;
+
+  // Add argument for listing include files (used for direct mode).
+  preprocess_args += std::string("-H");  // Supported by gcc, clang and ghc
+
+  // Add argument for only preprocessing certain directives
+  if (m_compatible_mode == gcc_wrapper_t::compatible_mode_t::CLANG) {
+    preprocess_args += std::string("-frewrite-includes");
+  } else if (m_compatible_mode == gcc_wrapper_t::compatible_mode_t::GCC) {
+    preprocess_args += std::string("-fdirectives-only");
+  }
+
+  return preprocess_args;
+}
+
 string_list_t gcc_wrapper_t::get_relevant_arguments() {
   string_list_t filtered_args;
 
@@ -375,8 +373,7 @@ std::string gcc_wrapper_t::preprocess_source() {
 
   // Run the preprocessor step.
   file::tmp_file_t preprocessed_file(sys::get_local_temp_folder(), ".i");
-  const auto preprocessor_args =
-      make_preprocessor_cmd(m_resolved_args, preprocessed_file.path(), m_compatible_mode);
+  const auto preprocessor_args = make_preprocessor_cmd(preprocessed_file.path());
   auto result = sys::run(preprocessor_args);
   if (result.return_code != 0) {
     throw std::runtime_error("Preprocessing command was unsuccessful.");
