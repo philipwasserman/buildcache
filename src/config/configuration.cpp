@@ -74,6 +74,7 @@ bool s_remote_locks = false;
 std::string s_remote;
 std::string s_s3_access;
 std::string s_s3_secret;
+std::string s_s3_session_token;
 bool s_terminate_on_miss = false;
 
 std::string to_lower(const std::string& str) {
@@ -325,6 +326,13 @@ void load_from_file(const std::string& file_name) {
   }
 
   {
+    const auto* node = cJSON_GetObjectItemCaseSensitive(root, "s3_session_token");
+    if ((cJSON_IsString(node) != 0) && node->valuestring != nullptr) {
+      s_s3_session_token = std::string(node->valuestring);
+    }
+  }
+
+  {
     const auto* node = cJSON_GetObjectItemCaseSensitive(root, "terminate_on_miss");
     if (cJSON_IsBool(node) != 0) {
       s_terminate_on_miss = (cJSON_IsTrue(node) != 0);
@@ -569,6 +577,13 @@ void init() {
     }
 
     {
+      const env_var_t env("BUILDCACHE_S3_SESSION_TOKEN");
+      if (env) {
+        s_s3_session_token = env.as_string();
+      }
+    }
+
+    {
       const env_var_t env("BUILDCACHE_TERMINATE_ON_MISS");
       if (env) {
         s_terminate_on_miss = env.as_bool();
@@ -687,6 +702,10 @@ const std::string& s3_access() {
 
 const std::string& s3_secret() {
   return s_s3_secret;
+}
+
+const std::string& s3_session_token() {
+  return s_s3_session_token;
 }
 
 bool terminate_on_miss() {

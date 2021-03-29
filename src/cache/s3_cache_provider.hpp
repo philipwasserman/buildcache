@@ -40,6 +40,7 @@ private:
 
   std::string m_access;
   std::string m_secret;
+  std::string m_session_token;
 };
 
 }  // namespace bcache

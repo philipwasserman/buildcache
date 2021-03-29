@@ -65,6 +65,7 @@ bool s3_cache_provider_t::connect(const std::string& host_description) {
   }
   m_access = config::s3_access();
   m_secret = config::s3_secret();
+  m_session_token = config::s3_session_token();
 
   return http_cache_provider_t::connect(host_description);
 }
@@ -80,10 +81,16 @@ std::vector<std::string> s3_cache_provider_t::get_header(const std::string& meth
   const std::string string_to_sign =
       method + "\n\n" + content_type + "\n" + date_formatted + "\n" + relative_path;
   const auto signature = sign_string(string_to_sign);
+  std::vector<std::string> header = {
+        "Date: " + date_formatted,
+        "Content-Type: " + content_type,
+        "Authorization: AWS " + m_access + ":" + signature
+      };
+  if (!m_session_token.empty()) {
+    header.push_back("x-amz-security-token: " + m_session_token);
+  }
 
-  return {"Date: " + date_formatted,
-          "Content-Type: " + content_type,
-          "Authorization: AWS " + m_access + ":" + signature};
+  return header;
 }
 
 std::string s3_cache_provider_t::sign_string(const std::string& str) const {

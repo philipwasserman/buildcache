@@ -135,6 +135,9 @@ const std::string& s3_access();
 /// @returns the S3 secret key for the remote cache.
 const std::string& s3_secret();
 
+/// @returns the S3 temporary session token for the remote cache.
+const std::string& s3_session_token();
+
 /// @returns true if a "terminate on a miss" mode is enabled.
 bool terminate_on_miss();
 
